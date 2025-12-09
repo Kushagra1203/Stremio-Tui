@@ -7,6 +7,9 @@ class MediaManager:
         self.client = StremioClient()
         self.images = ImageCache()
 
+    async def get_trending(self, type_="series"):
+        return await self.client.get_catalog_cinemeta(type_, "top")
+
     async def get_image(self, url):
         return await self.images.get_image(url)
 

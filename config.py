@@ -6,6 +6,7 @@ OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 
 # --- URLs ---
 CINEMETA_URL = "https://v3-cinemeta.strem.io/meta"
+CINEMETA_CATALOG_URL = "https://v3-cinemeta.strem.io/catalog" # <--- NEW
 TVMAZE_URL = "https://api.tvmaze.com"
 TMDB_ADDON_URL = "https://94c8cb9f702d-tmdb-addon.baby-beamup.club"
 OMDB_URL = "http://www.omdbapi.com"

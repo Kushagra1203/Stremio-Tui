@@ -4,9 +4,9 @@ from textual.containers import Vertical
 from textual.widgets import Label, Input, ListView, Footer
 from textual.binding import Binding
 
-# New Imports
 from core.manager import MediaManager
-from ui.widgets.nav import SidebarNav
+# --- FIX: Ensure SidebarItem is imported here ---
+from ui.widgets.nav import SidebarNav, SidebarItem
 from ui.widgets.cards import ResultItem
 from ui.screens.details import SeriesDetailScreen
 from ui.screens.player import StreamSelectScreen
@@ -81,6 +81,11 @@ class StremioApp(App):
     ResultItem:hover {
         background: #1e1e1e;
     }
+
+    /* --- UTILITIES --- */
+    .hidden {
+        display: none;
+    }
     """
 
     BINDINGS = [
@@ -91,6 +96,7 @@ class StremioApp(App):
     def __init__(self):
         super().__init__()
         self.manager = MediaManager()
+        self.current_view = "search" # Track what we are looking at
 
     def compose(self) -> ComposeResult:
         with Vertical(id="sidebar"):
@@ -98,13 +104,84 @@ class StremioApp(App):
             yield SidebarNav()
 
         with Vertical(id="main_container"):
+            # We keep the Input but might hide it
             yield Input(placeholder="Search Movies & TV...", id="search_box")
+            
+            # This list will hold Search Results OR Trending Items
             yield ListView(id="results_list")
         
         yield Footer()
 
     def on_mount(self):
         self.query_one("#search_box").focus()
+
+    # --- Handle Sidebar Clicks ---
+    async def on_list_view_selected(self, message: ListView.Selected):
+        item = message.item
+        
+        # CASE A: Sidebar Navigation Clicked
+        if isinstance(item, SidebarItem):
+            if item.id_name == "nav_search":
+                self.switch_to_search()
+            elif item.id_name == "nav_trending":
+                await self.switch_to_trending()
+            # History/Settings can be added later
+
+        # CASE B: Result Item Clicked (Movie/Show)
+        elif isinstance(item, ResultItem):
+            if hasattr(item, 'type_'):
+                if item.type_ == "TV series" or item.type_ == "series":
+                    self.push_screen(SeriesDetailScreen(item.imdb_id, item.title_text))
+                else:
+                    self.push_screen(
+                        StreamSelectScreen(
+                            imdb_id=item.imdb_id,
+                            type_=item.type_,
+                            title=item.title_text
+                        )
+                    )
+
+    # --- View Logic ---
+    def switch_to_search(self):
+        self.current_view = "search"
+        search_box = self.query_one("#search_box")
+        search_box.remove_class("hidden")
+        search_box.focus()
+        
+        # Clear list or keep previous search results? Let's clear for now
+        self.query_one("#results_list").clear()
+        self.notify("Search Mode")
+
+    async def switch_to_trending(self):
+        self.current_view = "trending"
+        
+        # Hide Search Box
+        self.query_one("#search_box").add_class("hidden")
+        
+        # Clear List & Fetch Trending
+        list_view = self.query_one("#results_list")
+        list_view.clear()
+        self.notify("Fetching Trending Series...")
+        
+        # Fetch Data
+        results = await self.manager.get_trending("series")
+        
+        if not results:
+            self.notify("Failed to load Trending.", severity="error")
+            return
+
+        for res in results:
+            list_view.append(
+                ResultItem(
+                    title=res['title'],
+                    year=res['year'],
+                    type_=res['type'],
+                    imdb_id=res['id']
+                )
+            )
+        
+        # Focus the list so user can scroll immediately
+        list_view.focus()
 
     async def on_input_submitted(self, message: Input.Submitted):
         query = message.value
@@ -130,20 +207,6 @@ class StremioApp(App):
                 )
             )
 
-    def on_list_view_selected(self, message: ListView.Selected):
-        item = message.item
-        if isinstance(item, ResultItem):
-            if hasattr(item, 'type_'):
-                if item.type_ == "TV series":
-                    self.push_screen(SeriesDetailScreen(item.imdb_id, item.title_text))
-                else:
-                    self.push_screen(
-                        StreamSelectScreen(
-                            imdb_id=item.imdb_id,
-                            type_=item.type_,
-                            title=item.title_text
-                        )
-                    )
-
     async def on_shutdown(self):
         await self.manager.close()
+
