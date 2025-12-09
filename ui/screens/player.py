@@ -59,9 +59,7 @@ class StreamSelectScreen(Screen):
 
     @work
     async def fetch_streams(self):
-        # NOTE: We now access the manager via self.app.manager
         manager = self.app.manager
-        
         streams = await manager.get_streams(self.type_, self.stremio_id)
         
         list_view = self.query_one("#stream_list")
@@ -76,12 +74,16 @@ class StreamSelectScreen(Screen):
 
         title_label.update(f"Select Stream: {self.display_title} ({len(streams)} found)")
         
-        available_width = self.app.console.size.width - 6
+        # Calculate available width for the title
+        # Width - Padding (roughly 4 chars)
+        screen_width = self.app.console.size.width
+        if screen_width < 80: screen_width = 80
+        available_width = screen_width - 4
 
         for s in streams:
             if not isinstance(s, dict): continue 
 
-            # 1. Provider Tag
+            # --- 1. Provider Tag ---
             raw_provider = s.get('provider') or s.get('name', 'UNK')
             raw_provider = raw_provider.replace('\n', ' ')
             
@@ -89,17 +91,48 @@ class StreamSelectScreen(Screen):
             elif "Comet" in raw_provider: provider_tag = "Comet"
             else: provider_tag = raw_provider[:5]
 
-            # 2. Title & Parsing
+            # --- 2. Extract Stats (Seeds/Size) BEFORE cleaning title ---
             full_title = s.get('title', '')
             bh = s.get('behaviorHints', {})
             
-            if '\n' in full_title: filename = full_title.split('\n')[0]
-            else: filename = full_title
+            size_str = ""
+            seed_str = ""
+
+            # A. Try behaviorHints first (Comet usually puts it here)
+            if bh.get('videoSize'):
+                size_str = format_size(bh.get('videoSize'))
+            
+            if s.get('seeds') is not None:
+                seed_str = str(s['seeds'])
+
+            # B. Try Regex on Title (Torrentio puts info here, often on 2nd line)
+            # Regex for Size (e.g., 1.5 GB, 200 MB)
+            if not size_str:
+                # Look for 💾 emoji or just patterns like "1.2 GB"
+                size_match = re.search(r'(?:💾|📦|Size)\s?([\d\.]+\s?[KMGT]B)', full_title, re.IGNORECASE)
+                if size_match: 
+                    size_str = size_match.group(1)
+                else:
+                    # Fallback loose regex
+                    loose_match = re.search(r'(\d+(?:\.\d+)?\s?[KMGT]B)', full_title)
+                    if loose_match: size_str = loose_match.group(1)
+
+            # Regex for Seeds (e.g., 👤 123)
+            if not seed_str:
+                seed_match = re.search(r'(?:👤|👥|S:)\s?(\d+)', full_title)
+                if seed_match: seed_str = seed_match.group(1)
+
+            # --- 3. Clean Filename ---
+            # Remove the stats line (usually after \n)
+            if '\n' in full_title: 
+                filename = full_title.split('\n')[0]
+            else: 
+                filename = full_title
             
             if not filename: filename = bh.get('filename')
             if not filename: filename = "Unknown Release"
 
-            # 3. Resolution
+            # --- 4. Resolution Tag ---
             check_str = (full_title + " " + raw_provider).lower()
             res_tag = ""
             res_color = "dim"
@@ -120,24 +153,37 @@ class StreamSelectScreen(Screen):
                 res_tag = "CAM"
                 res_color = "red"
 
-            # 4. Stats
-            info_parts = []
-            if bh.get('videoSize'):
-                info_parts.append(f"📦 {format_size(bh.get('videoSize'))}")
+            # --- 5. Build Stats String ---
+            stats_parts = []
+            if size_str: stats_parts.append(f"💾 {size_str}")
+            if seed_str: stats_parts.append(f"👤 {seed_str}")
+            stats_display = "  ".join(stats_parts)
 
-            if s.get('seeds') is not None:
-                 info_parts.append(f"👥 {s['seeds']}")
+            # --- 6. Smart Truncation ---
+            # Calculate how much space the "Non-Title" parts take
+            # [Prov] [Res] ... | Stats
+            reserved_len = len(provider_tag) + 3  # "[Tag] "
+            if res_tag: reserved_len += len(res_tag) + 3 # "[Res] "
+            if stats_display: reserved_len += len(stats_display) + 3 # " | Stats"
+            
+            # Remaining space for the filename
+            allowed_title_len = available_width - reserved_len
+            if allowed_title_len < 10: allowed_title_len = 10 # Safety minimum
+            
+            display_filename = filename.strip()
+            if len(display_filename) > allowed_title_len:
+                display_filename = display_filename[:allowed_title_len-1] + "…"
 
-            stats_str = "  ".join(info_parts)
-
-            # 5. Build Text
+            # --- 7. Construct Rich Text ---
             final_text = Text()
             final_text.append(f"[{provider_tag}] ", style="bold blue")
             if res_tag: final_text.append(f"[{res_tag}] ", style=res_color)
-            final_text.append(filename[:50]) # Simple truncation
-            if stats_str:
+            
+            final_text.append(display_filename)
+            
+            if stats_display:
                 final_text.append(" | ", style="dim")
-                final_text.append(stats_str, style="cyan")
+                final_text.append(stats_display, style="cyan")
 
             link = s.get('url') or s.get('infoHash')
             if not link: continue
