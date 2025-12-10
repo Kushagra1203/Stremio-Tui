@@ -1,11 +1,19 @@
 # core/manager.py
 from api import StremioClient
 from core.cache import ImageCache
+from core.history import HistoryManager
 
 class MediaManager:
     def __init__(self):
         self.client = StremioClient()
         self.images = ImageCache()
+        self.history = HistoryManager()
+    
+    def add_to_history(self, data):
+        self.history.add_entry(data)
+
+    def get_history(self):
+        return self.history.get_sorted_history()
 
     async def get_trending(self, type_="series"):
         return await self.client.get_catalog_cinemeta(type_, "top")

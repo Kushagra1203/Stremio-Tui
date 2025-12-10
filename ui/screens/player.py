@@ -6,6 +6,7 @@ from textual import work
 from rich.text import Text
 import re
 import subprocess
+import tempfile  # <--- NEW IMPORT
 
 # Import helpers from core
 from core.utils import format_size
@@ -74,8 +75,7 @@ class StreamSelectScreen(Screen):
 
         title_label.update(f"Select Stream: {self.display_title} ({len(streams)} found)")
         
-        # Calculate available width for the title
-        # Width - Padding (roughly 4 chars)
+        # Calculate available width
         screen_width = self.app.console.size.width
         if screen_width < 80: screen_width = 80
         available_width = screen_width - 4
@@ -91,39 +91,33 @@ class StreamSelectScreen(Screen):
             elif "Comet" in raw_provider: provider_tag = "Comet"
             else: provider_tag = raw_provider[:5]
 
-            # --- 2. Extract Stats (Seeds/Size) BEFORE cleaning title ---
+            # --- 2. Extract Stats (Seeds/Size) ---
             full_title = s.get('title', '')
             bh = s.get('behaviorHints', {})
             
             size_str = ""
             seed_str = ""
 
-            # A. Try behaviorHints first (Comet usually puts it here)
             if bh.get('videoSize'):
                 size_str = format_size(bh.get('videoSize'))
             
             if s.get('seeds') is not None:
                 seed_str = str(s['seeds'])
 
-            # B. Try Regex on Title (Torrentio puts info here, often on 2nd line)
-            # Regex for Size (e.g., 1.5 GB, 200 MB)
+            # Regex Fallbacks
             if not size_str:
-                # Look for 💾 emoji or just patterns like "1.2 GB"
                 size_match = re.search(r'(?:💾|📦|Size)\s?([\d\.]+\s?[KMGT]B)', full_title, re.IGNORECASE)
                 if size_match: 
                     size_str = size_match.group(1)
                 else:
-                    # Fallback loose regex
                     loose_match = re.search(r'(\d+(?:\.\d+)?\s?[KMGT]B)', full_title)
                     if loose_match: size_str = loose_match.group(1)
 
-            # Regex for Seeds (e.g., 👤 123)
             if not seed_str:
                 seed_match = re.search(r'(?:👤|👥|S:)\s?(\d+)', full_title)
                 if seed_match: seed_str = seed_match.group(1)
 
             # --- 3. Clean Filename ---
-            # Remove the stats line (usually after \n)
             if '\n' in full_title: 
                 filename = full_title.split('\n')[0]
             else: 
@@ -160,15 +154,12 @@ class StreamSelectScreen(Screen):
             stats_display = "  ".join(stats_parts)
 
             # --- 6. Smart Truncation ---
-            # Calculate how much space the "Non-Title" parts take
-            # [Prov] [Res] ... | Stats
-            reserved_len = len(provider_tag) + 3  # "[Tag] "
-            if res_tag: reserved_len += len(res_tag) + 3 # "[Res] "
-            if stats_display: reserved_len += len(stats_display) + 3 # " | Stats"
+            reserved_len = len(provider_tag) + 3 
+            if res_tag: reserved_len += len(res_tag) + 3
+            if stats_display: reserved_len += len(stats_display) + 3
             
-            # Remaining space for the filename
             allowed_title_len = available_width - reserved_len
-            if allowed_title_len < 10: allowed_title_len = 10 # Safety minimum
+            if allowed_title_len < 10: allowed_title_len = 10
             
             display_filename = filename.strip()
             if len(display_filename) > allowed_title_len:
@@ -195,7 +186,33 @@ class StreamSelectScreen(Screen):
     def on_list_view_selected(self, message: ListView.Selected):
         item = message.item
         link = item.link 
-        self.app.notify(f"Launching MPV...")
+        
+        # Save to History
+        self.app.manager.add_to_history({
+            "imdb_id": self.imdb_id,
+            "title": self.media_title,
+            "type": self.type_,
+            "year": "",
+            "season": self.season,
+            "episode": self.episode,
+            "stream_link": link 
+        })
+        
+        self.app.notify(f"Launching MPV (Disk Cache Enabled)...")
+        
         with self.app.suspend():
             subprocess.run(["clear"]) 
-            subprocess.run(["webtorrent", link, "--mpv"])
+            
+            # --- NEW: AUTO-DELETING DISK CACHE ---
+            # Creates a temp folder that destroys itself on exit
+            with tempfile.TemporaryDirectory(prefix="stremio_") as tmp_dir:
+                print(f"Caching stream to: {tmp_dir}")
+                print("Folder will be deleted when player closes.")
+                
+                cmd = [
+                    "webtorrent", link,
+                    "--out", tmp_dir,  # Tell webtorrent to use this disk folder
+                    "--mpv", 
+                    "--player-args=--save-position-on-quit" 
+                ]
+                subprocess.run(cmd)

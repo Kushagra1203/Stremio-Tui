@@ -1,11 +1,11 @@
 # ui/app.py
+import subprocess # <--- Needed for launching MPV
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label, Input, ListView, Footer
 from textual.binding import Binding
 
 from core.manager import MediaManager
-# --- FIX: Ensure SidebarItem is imported here ---
 from ui.widgets.nav import SidebarNav, SidebarItem
 from ui.widgets.cards import ResultItem
 from ui.screens.details import SeriesDetailScreen
@@ -82,7 +82,6 @@ class StremioApp(App):
         background: #1e1e1e;
     }
 
-    /* --- UTILITIES --- */
     .hidden {
         display: none;
     }
@@ -96,7 +95,7 @@ class StremioApp(App):
     def __init__(self):
         super().__init__()
         self.manager = MediaManager()
-        self.current_view = "search" # Track what we are looking at
+        self.current_view = "search"
 
     def compose(self) -> ComposeResult:
         with Vertical(id="sidebar"):
@@ -104,10 +103,7 @@ class StremioApp(App):
             yield SidebarNav()
 
         with Vertical(id="main_container"):
-            # We keep the Input but might hide it
             yield Input(placeholder="Search Movies & TV...", id="search_box")
-            
-            # This list will hold Search Results OR Trending Items
             yield ListView(id="results_list")
         
         yield Footer()
@@ -115,20 +111,36 @@ class StremioApp(App):
     def on_mount(self):
         self.query_one("#search_box").focus()
 
-    # --- Handle Sidebar Clicks ---
     async def on_list_view_selected(self, message: ListView.Selected):
         item = message.item
         
-        # CASE A: Sidebar Navigation Clicked
+        # CASE A: Sidebar Navigation
         if isinstance(item, SidebarItem):
             if item.id_name == "nav_search":
                 self.switch_to_search()
             elif item.id_name == "nav_trending":
                 await self.switch_to_trending()
-            # History/Settings can be added later
+            elif item.id_name == "nav_history":
+                self.switch_to_history()
 
-        # CASE B: Result Item Clicked (Movie/Show)
+        # CASE B: Result Item (Movie/Show)
         elif isinstance(item, ResultItem):
+            # --- NEW: Direct Play from History ---
+            if item.stream_link:
+                self.notify(f"Resuming {item.title_text}...")
+                with self.suspend():
+                    subprocess.run(["clear"])
+                    # Use the same command flags as the Player screen
+                    cmd = [
+                        "webtorrent", item.stream_link, 
+                        "--mpv", 
+                        "--player-args=--save-position-on-quit" 
+                    ]
+                    subprocess.run(cmd)
+                return 
+            # -------------------------------------
+
+            # Normal Navigation
             if hasattr(item, 'type_'):
                 if item.type_ == "TV series" or item.type_ == "series":
                     self.push_screen(SeriesDetailScreen(item.imdb_id, item.title_text))
@@ -141,29 +153,22 @@ class StremioApp(App):
                         )
                     )
 
-    # --- View Logic ---
     def switch_to_search(self):
         self.current_view = "search"
         search_box = self.query_one("#search_box")
         search_box.remove_class("hidden")
         search_box.focus()
-        
-        # Clear list or keep previous search results? Let's clear for now
         self.query_one("#results_list").clear()
         self.notify("Search Mode")
 
     async def switch_to_trending(self):
         self.current_view = "trending"
-        
-        # Hide Search Box
         self.query_one("#search_box").add_class("hidden")
         
-        # Clear List & Fetch Trending
         list_view = self.query_one("#results_list")
         list_view.clear()
         self.notify("Fetching Trending Series...")
         
-        # Fetch Data
         results = await self.manager.get_trending("series")
         
         if not results:
@@ -179,8 +184,45 @@ class StremioApp(App):
                     imdb_id=res['id']
                 )
             )
+        list_view.focus()
+
+    def switch_to_history(self):
+        self.current_view = "history"
+        self.query_one("#search_box").add_class("hidden")
         
-        # Focus the list so user can scroll immediately
+        list_view = self.query_one("#results_list")
+        list_view.clear()
+        
+        history_items = self.manager.get_history()
+        
+        if not history_items:
+            self.notify("No history found.")
+            return
+
+        self.notify(f"Loaded {len(history_items)} items.")
+        
+        for item in history_items:
+            # --- FIX: Cleaner Formatting ---
+            clean_title = item['title']
+            
+            # Use 'Last Watched' as the subtitle/year
+            timestamp = item.get('last_watched', '')
+            
+            # If it's a series, append info to TITLE, not create duplicates
+            if item.get('season') and item.get('episode'):
+                s_num = item['season']
+                e_num = item['episode']
+                clean_title = f"{clean_title} - S{s_num:02d}E{e_num:02d}"
+
+            list_view.append(
+                ResultItem(
+                    title=clean_title,
+                    year=timestamp, 
+                    type_=item.get('type', 'series'),
+                    imdb_id=item['imdb_id'],
+                    stream_link=item.get('stream_link') # Pass the link!
+                )
+            )
         list_view.focus()
 
     async def on_input_submitted(self, message: Input.Submitted):
