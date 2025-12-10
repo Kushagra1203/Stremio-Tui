@@ -1,0 +1,198 @@
+/* styles.tcss */
+
+/* --- GLOBAL LAYOUT --- */
+Screen {
+    layout: horizontal;
+    background: #121212;
+    color: #e0e0e0;
+}
+
+/* --- SIDEBAR (App Layout) --- */
+#sidebar {
+    width: 25;
+    dock: left;
+    background: #1a1a1a;
+    border-right: solid #333;
+    height: 100%;
+}
+
+#sidebar_title {
+    text-align: center;
+    padding: 1;
+    color: #d7005f;
+    text-style: bold;
+    background: #1a1a1a;
+    border-bottom: solid #333;
+}
+
+#sidebar_nav {
+    background: #1a1a1a;
+    border: none;
+}
+
+SidebarItem {
+    padding: 1 2;
+    background: #1a1a1a;
+    color: #888;
+}
+
+SidebarItem:hover {
+    background: #262626;
+    color: #fff;
+}
+
+/* --- MAIN CONTENT AREA --- */
+#main_container {
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+}
+
+Input {
+    dock: top;
+    margin-bottom: 1;
+    border: tall #333;
+    background: #121212;
+    color: #fff;
+}
+
+#results_list {
+    background: #121212;
+    border: none;
+}
+
+/* --- RESULT CARDS --- */
+ResultItem {
+    padding: 1;
+    border-bottom: solid #222;
+}
+
+ResultItem:hover {
+    background: #1e1e1e;
+}
+
+.result_type {
+    color: #555;
+    text-style: italic;
+}
+
+/* --- SERIES DETAILS SIDEBAR (ui/widgets/sidebar.py) --- */
+SeriesSidebar {
+    width: 35%;
+    min-width: 40;
+    height: 100%; 
+    border-right: solid #333; 
+    padding: 1 2; 
+    background: #111;
+    overflow-y: auto; 
+    scrollbar-size: 0 0; 
+}
+
+#poster_container { 
+    height: auto;
+    align: center middle; 
+    margin-bottom: 1;
+}
+
+#poster_image { 
+    width: 30; 
+    height: auto; 
+}
+
+#info_title { 
+    text-align: center; 
+    color: #fff; 
+    text-style: bold; 
+    background: #d7005f; 
+    padding: 1; 
+    width: 100%; 
+    margin-bottom: 1; 
+}
+
+#meta_table { 
+    height: auto; 
+    margin-bottom: 1; 
+}
+
+#ep_desc { 
+    color: #888; 
+    height: auto; 
+    min-height: 5;
+    border-top: solid #333; 
+    padding-top: 1; 
+    margin-top: 1; 
+}
+
+MetaRow {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 0;
+    padding: 0;
+}
+
+.meta_label {
+    width: 12;
+    color: #d7005f; 
+    text-style: bold;
+}
+
+.meta_value {
+    width: 1fr;
+    color: #eeeeee;
+}
+
+/* --- STREAM SELECT SCREEN (ui/screens/player.py) --- */
+StreamSelectScreen {
+    layer: above; 
+    layout: vertical;
+}
+
+StreamSelectScreen ListView {
+    scrollbar-size-vertical: 0;
+}
+
+/* --- DETAILS SCREEN (ui/screens/details.py) --- */
+SeriesDetailScreen { 
+    background: #0f0f0f; 
+}
+
+SeriesDetailScreen #container { 
+    width: 100%; 
+    height: 100%; 
+    layout: horizontal; 
+}
+
+SeriesDetailScreen #list_pane { 
+    width: 1fr; 
+    height: 100%; 
+    background: #0f0f0f; 
+}
+
+SeriesDetailScreen #screen_title {
+    dock: top; 
+    padding: 1 2; 
+    color: #d7005f; 
+    text-style: bold; 
+    border-bottom: solid #333;
+}
+
+SeriesDetailScreen ListItem { 
+    padding: 1 2; 
+    color: #888; 
+}
+
+SeriesDetailScreen ListItem:hover { 
+    background: #1a1a1a; 
+    color: #fff; 
+}
+
+SeriesDetailScreen ListItem.--highlight { 
+    background: #111; 
+    color: #d7005f; 
+    border-left: wide #d7005f; 
+}
+
+/* --- UTILITIES --- */
+.hidden {
+    display: none;
+}

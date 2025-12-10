@@ -1,5 +1,6 @@
 # ui/app.py
-import subprocess # <--- Needed for launching MPV
+import subprocess
+import tempfile
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.widgets import Label, Input, ListView, Footer
@@ -12,80 +13,7 @@ from ui.screens.details import SeriesDetailScreen
 from ui.screens.player import StreamSelectScreen
 
 class StremioApp(App):
-    CSS = """
-    /* --- GLOBAL LAYOUT --- */
-    Screen {
-        layout: horizontal;
-        background: #121212;
-        color: #e0e0e0;
-    }
-
-    /* --- SIDEBAR --- */
-    #sidebar {
-        width: 25;
-        dock: left;
-        background: #1a1a1a;
-        border-right: solid #333;
-        height: 100%;
-    }
-
-    #sidebar_title {
-        text-align: center;
-        padding: 1;
-        color: #d7005f;
-        text-style: bold;
-        background: #1a1a1a;
-        border-bottom: solid #333;
-    }
-
-    #sidebar_nav {
-        background: #1a1a1a;
-        border: none;
-    }
-
-    SidebarItem {
-        padding: 1 2;
-        background: #1a1a1a;
-        color: #888;
-    }
-
-    SidebarItem:hover {
-        background: #262626;
-        color: #fff;
-    }
-
-    /* --- MAIN CONTENT AREA --- */
-    #main_container {
-        width: 1fr;
-        height: 100%;
-        padding: 1 2;
-    }
-
-    Input {
-        dock: top;
-        margin-bottom: 1;
-        border: tall #333;
-        background: #121212;
-        color: #fff;
-    }
-    
-    #results_list {
-        background: #121212;
-        border: none;
-    }
-    
-    ResultItem {
-        padding: 1;
-        border-bottom: solid #222;
-    }
-    ResultItem:hover {
-        background: #1e1e1e;
-    }
-
-    .hidden {
-        display: none;
-    }
-    """
+    CSS_PATH = "../styles.tcss" 
 
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit"),
@@ -125,22 +53,22 @@ class StremioApp(App):
 
         # CASE B: Result Item (Movie/Show)
         elif isinstance(item, ResultItem):
-            # --- NEW: Direct Play from History ---
+            # Direct Play
             if item.stream_link:
                 self.notify(f"Resuming {item.title_text}...")
                 with self.suspend():
                     subprocess.run(["clear"])
-                    # Use the same command flags as the Player screen
-                    cmd = [
-                        "webtorrent", item.stream_link, 
-                        "--mpv", 
-                        "--player-args=--save-position-on-quit" 
-                    ]
-                    subprocess.run(cmd)
+                    with tempfile.TemporaryDirectory(prefix="stremio_") as tmp_dir:
+                        cmd = [
+                            "webtorrent", item.stream_link, 
+                            "--out", tmp_dir, 
+                            "--mpv", 
+                            "--player-args=--save-position-on-quit" 
+                        ]
+                        subprocess.run(cmd)
                 return 
-            # -------------------------------------
 
-            # Normal Navigation
+            # Navigation
             if hasattr(item, 'type_'):
                 if item.type_ == "TV series" or item.type_ == "series":
                     self.push_screen(SeriesDetailScreen(item.imdb_id, item.title_text))
@@ -202,13 +130,9 @@ class StremioApp(App):
         self.notify(f"Loaded {len(history_items)} items.")
         
         for item in history_items:
-            # --- FIX: Cleaner Formatting ---
             clean_title = item['title']
-            
-            # Use 'Last Watched' as the subtitle/year
             timestamp = item.get('last_watched', '')
             
-            # If it's a series, append info to TITLE, not create duplicates
             if item.get('season') and item.get('episode'):
                 s_num = item['season']
                 e_num = item['episode']
@@ -220,7 +144,7 @@ class StremioApp(App):
                     year=timestamp, 
                     type_=item.get('type', 'series'),
                     imdb_id=item['imdb_id'],
-                    stream_link=item.get('stream_link') # Pass the link!
+                    stream_link=item.get('stream_link')
                 )
             )
         list_view.focus()
@@ -251,4 +175,3 @@ class StremioApp(App):
 
     async def on_shutdown(self):
         await self.manager.close()
-

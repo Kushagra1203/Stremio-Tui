@@ -20,4 +20,3 @@ class SidebarNav(Static):
             yield SidebarItem("Search", "🔍", "nav_search")
             yield SidebarItem("Trending", "🔥", "nav_trending")
             yield SidebarItem("History", "📜", "nav_history")
-            yield SidebarItem("Settings", "⚙️", "nav_settings")
