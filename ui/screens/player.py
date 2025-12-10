@@ -1,12 +1,12 @@
 # ui/screens/player.py
 from textual.app import ComposeResult
-from textual.widgets import Header, Footer, ListView, ListItem, Label, LoadingIndicator
+from textual.widgets import ListView, ListItem, Label, LoadingIndicator
 from textual.screen import Screen
 from textual import work
 from rich.text import Text
 import re
 import subprocess
-import tempfile  # <--- NEW IMPORT
+import tempfile 
 
 # Import helpers from core
 from core.utils import format_size
@@ -49,11 +49,11 @@ class StreamSelectScreen(Screen):
             self.display_title = title
 
     def compose(self) -> ComposeResult:
-        yield Header()
+        # Removed Header()
         yield Label(f"Fetching Streams: {self.display_title}", id="screen_title")
         yield LoadingIndicator(id="loading")
         yield ListView(id="stream_list")
-        yield Footer()
+        # Removed Footer()
 
     def on_mount(self):
         self.fetch_streams()
@@ -203,15 +203,14 @@ class StreamSelectScreen(Screen):
         with self.app.suspend():
             subprocess.run(["clear"]) 
             
-            # --- NEW: AUTO-DELETING DISK CACHE ---
-            # Creates a temp folder that destroys itself on exit
+            # --- AUTO-DELETING DISK CACHE ---
             with tempfile.TemporaryDirectory(prefix="stremio_") as tmp_dir:
                 print(f"Caching stream to: {tmp_dir}")
                 print("Folder will be deleted when player closes.")
                 
                 cmd = [
                     "webtorrent", link,
-                    "--out", tmp_dir,  # Tell webtorrent to use this disk folder
+                    "--out", tmp_dir, 
                     "--mpv", 
                     "--player-args=--save-position-on-quit" 
                 ]

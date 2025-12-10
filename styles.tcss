@@ -1,198 +1,147 @@
 /* styles.tcss */
 
+/* --- VARIABLES --- */
+$accent: #d7005f;
+$text: #e0e0e0;
+$dim-text: #888888;
+$border: #444444;
+
 /* --- GLOBAL LAYOUT --- */
-Screen {
-    layout: horizontal;
-    background: #121212;
-    color: #e0e0e0;
+Screen, Vertical, Horizontal, Container {
+    background: transparent;
+    color: $text;
 }
 
-/* --- SIDEBAR (App Layout) --- */
+Screen {
+    layout: horizontal;
+}
+
+/* --- SIDEBAR --- */
 #sidebar {
     width: 25;
     dock: left;
-    background: #1a1a1a;
-    border-right: solid #333;
     height: 100%;
+    border-right: solid $border;
+    background: transparent;
 }
 
 #sidebar_title {
     text-align: center;
-    padding: 1;
-    color: #d7005f;
+    color: $accent;
     text-style: bold;
-    background: #1a1a1a;
-    border-bottom: solid #333;
-}
-
-#sidebar_nav {
-    background: #1a1a1a;
-    border: none;
+    padding: 1;
+    border-bottom: solid $border;
+    background: transparent;
 }
 
 SidebarItem {
     padding: 1 2;
-    background: #1a1a1a;
-    color: #888;
+    color: $dim-text;
+    background: transparent;
 }
 
 SidebarItem:hover {
-    background: #262626;
-    color: #fff;
+    color: $accent;
+    text-style: bold;
+    background: transparent;
 }
 
-/* --- MAIN CONTENT AREA --- */
+/* FIX: Changed from .--highlight to .-highlight */
+SidebarItem.-highlight {
+    color: $accent;
+    text-style: bold;
+    border-left: wide $accent;
+    background: transparent;
+}
+
+/* --- MAIN CONTENT --- */
 #main_container {
     width: 1fr;
     height: 100%;
-    padding: 1 2;
+    padding: 0 1;
+    background: transparent;
 }
 
 Input {
     dock: top;
-    margin-bottom: 1;
-    border: tall #333;
-    background: #121212;
-    color: #fff;
+    margin: 1 0;
+    height: 3;
+    border: tall $border;
+    background: transparent;
 }
 
-#results_list {
-    background: #121212;
+Input:focus {
+    border: tall $accent;
+    color: $accent;
+    background: transparent;
+}
+
+/* --- RESULTS LIST --- */
+ListView {
     border: none;
+    background: transparent;
 }
 
-/* --- RESULT CARDS --- */
 ResultItem {
-    padding: 1;
-    border-bottom: solid #222;
-}
-
-ResultItem:hover {
-    background: #1e1e1e;
-}
-
-.result_type {
-    color: #555;
-    text-style: italic;
-}
-
-/* --- SERIES DETAILS SIDEBAR (ui/widgets/sidebar.py) --- */
-SeriesSidebar {
-    width: 35%;
-    min-width: 40;
-    height: 100%; 
-    border-right: solid #333; 
-    padding: 1 2; 
-    background: #111;
-    overflow-y: auto; 
-    scrollbar-size: 0 0; 
-}
-
-#poster_container { 
-    height: auto;
-    align: center middle; 
-    margin-bottom: 1;
-}
-
-#poster_image { 
-    width: 30; 
-    height: auto; 
-}
-
-#info_title { 
-    text-align: center; 
-    color: #fff; 
-    text-style: bold; 
-    background: #d7005f; 
-    padding: 1; 
-    width: 100%; 
-    margin-bottom: 1; 
-}
-
-#meta_table { 
-    height: auto; 
-    margin-bottom: 1; 
-}
-
-#ep_desc { 
-    color: #888; 
-    height: auto; 
-    min-height: 5;
-    border-top: solid #333; 
-    padding-top: 1; 
-    margin-top: 1; 
-}
-
-MetaRow {
     layout: horizontal;
     height: auto;
-    margin-bottom: 0;
-    padding: 0;
+    padding: 1 1;
+    border: none; 
+    background: transparent;
 }
 
-.meta_label {
-    width: 12;
-    color: #d7005f; 
+/* FIX: Target Label explicitly on hover */
+ResultItem:hover Label {
+    color: #ffffff;
+}
+
+/* FIX: Handle Keyboard Selection */
+/* 1. Add the correct class (.-highlight) */
+ResultItem.-highlight {
     text-style: bold;
+    background: transparent;
 }
 
-.meta_value {
-    width: 1fr;
-    color: #eeeeee;
+/* 2. Force the inner Label to change color */
+ResultItem.-highlight Label {
+    color: $accent;
 }
 
-/* --- STREAM SELECT SCREEN (ui/screens/player.py) --- */
+/* --- DETAILS & PLAYER --- */
+SeriesSidebar {
+    width: 30%;
+    border-right: solid $border;
+    background: transparent;
+}
+
+/* Updated Stream Screen to be Full Page (Not a popup) */
 StreamSelectScreen {
-    layer: above; 
-    layout: vertical;
+    align: left top;       /* Reset alignment */
+    width: 100%;
+    height: 100%;
+    background: transparent;
 }
 
-StreamSelectScreen ListView {
-    scrollbar-size-vertical: 0;
+/* Remove the box borders */
+StreamSelectScreen #stream_list {
+    width: 100%;
+    height: 1fr;           /* Take remaining height */
+    border: none;          /* Clean look */
+    background: transparent;
 }
 
-/* --- DETAILS SCREEN (ui/screens/details.py) --- */
-SeriesDetailScreen { 
-    background: #0f0f0f; 
+/* Ensure the title inside the stream screen looks right */
+StreamSelectScreen #screen_title {
+    dock: top;
+    padding: 1 2;
+    color: $accent;
+    text-style: bold;
+    border-bottom: solid $border;
+    background: transparent;
 }
 
-SeriesDetailScreen #container { 
-    width: 100%; 
-    height: 100%; 
-    layout: horizontal; 
+Label {
+    background: transparent;
 }
 
-SeriesDetailScreen #list_pane { 
-    width: 1fr; 
-    height: 100%; 
-    background: #0f0f0f; 
-}
-
-SeriesDetailScreen #screen_title {
-    dock: top; 
-    padding: 1 2; 
-    color: #d7005f; 
-    text-style: bold; 
-    border-bottom: solid #333;
-}
-
-SeriesDetailScreen ListItem { 
-    padding: 1 2; 
-    color: #888; 
-}
-
-SeriesDetailScreen ListItem:hover { 
-    background: #1a1a1a; 
-    color: #fff; 
-}
-
-SeriesDetailScreen ListItem.--highlight { 
-    background: #111; 
-    color: #d7005f; 
-    border-left: wide #d7005f; 
-}
-
-/* --- UTILITIES --- */
-.hidden {
-    display: none;
-}
+.hidden { display: none; }

@@ -1,31 +1,50 @@
 # ui/screens/details.py
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Header, Footer, ListView, ListItem, Label, LoadingIndicator
+from textual.widgets import ListView, ListItem, Label, LoadingIndicator
 from textual.screen import Screen
 from textual import work
 from rich.text import Text
 
-# Imports from our new structure
 from ui.widgets.sidebar import SeriesSidebar
 from ui.screens.player import StreamSelectScreen
+from ui.widgets.vim_list import VimListView
 from core.utils import fmt_runtime
 
+# NEW: Import bindings
+from ui.keybinds import NAV_BINDINGS, APP_BINDINGS
+
 class SeriesDetailScreen(Screen):
+    # Add Navigation Bindings to this screen
+    BINDINGS = NAV_BINDINGS + [
+        ("escape", "back", "Back") 
+    ]
+
     CSS = """
-    SeriesDetailScreen { background: #0f0f0f; }
-    #container { width: 100%; height: 100%; layout: horizontal; }
-    #list_pane { width: 1fr; height: 100%; background: #0f0f0f; }
+    SeriesDetailScreen, #container, #list_pane, VimListView { background: transparent; }
     
     #screen_title {
         dock: top; padding: 1 2; color: #d7005f; 
         text-style: bold; border-bottom: solid #333;
+        background: transparent;
     }
 
-    ListView { scrollbar-size-vertical: 1; margin: 1 0; width: 100%; }
-    ListItem { padding: 1 2; color: #888; }
-    ListItem:hover { background: #1a1a1a; color: #fff; }
-    ListItem.--highlight { background: #111; color: #d7005f; border-left: wide #d7005f; }
+    ListItem { padding: 1 2; color: #888; background: transparent; }
+    
+    /* FIX: Ensure hover works on the item text */
+    ListItem:hover { color: #d7005f; background: transparent; }
+    
+    /* FIX: Changed .--highlight to .-highlight */
+    ListItem.-highlight { 
+        color: #d7005f; 
+        text-style: bold;
+        background: transparent;
+        border: none;
+    }
+    
+    ListItem.-highlight Label {
+        color: #d7005f;
+    }
     """
 
     def __init__(self, imdb_id, title):
@@ -44,25 +63,30 @@ class SeriesDetailScreen(Screen):
         self.current_season = None
         
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
         with Horizontal(id="container"):
             yield SeriesSidebar(id="sidebar")
             with Vertical(id="list_pane"):
                 yield Label("Fetching Metadata...", id="screen_title")
                 yield LoadingIndicator(id="loading")
-                yield ListView(id="selection_list")
-        yield Footer()
+                
+                # SWAP ListView for VimListView
+                yield VimListView(id="selection_list")
 
     def on_mount(self):
-        # Access the global manager from the App class
         self.manager = self.app.manager
         self.fetch_data()
+        # Auto-focus the list so 'j'/'k' works immediately
+        self.query_one("#selection_list").focus()
+
+    def action_back(self):
+        if not self.viewing_seasons and not self.is_single_season:
+            self.show_season_list()
+        else:
+            self.app.pop_screen()
 
     @work
     async def fetch_data(self):
         sidebar = self.query_one(SeriesSidebar)
-        
-        # 1. Fetch Main Show Metadata
         self.meta = await self.manager.get_unified_metadata(self.imdb_id, self.show_title)
         
         if not self.meta or not self.meta.get('videos'):
@@ -73,7 +97,6 @@ class SeriesDetailScreen(Screen):
         self.main_poster_url = self.meta.get('poster')
         self.series_runtime = fmt_runtime(self.meta.get('runtime'))
         
-        # 2. Process Seasons Keys
         videos = self.meta.get('videos', [])
         seasons = {}
         for vid in videos:
@@ -88,7 +111,6 @@ class SeriesDetailScreen(Screen):
         if 0 in seasons: keys.append(0)
         self.sorted_season_keys = keys
 
-        # 3. Fetch Season Metadata (Smart Fetch)
         self.query_one("#screen_title").update("Fetching Season Metadata...")
         
         self.season_meta_cache = await self.manager.fetch_all_season_details(
@@ -99,9 +121,6 @@ class SeriesDetailScreen(Screen):
             keys
         )
 
-        # 4. PRE-FETCH IMAGES (Cache First 10)
-        self.query_one("#screen_title").update("Caching Art...")
-        
         if self.main_poster_url:
             await self.manager.get_image(self.main_poster_url)
             
@@ -115,7 +134,6 @@ class SeriesDetailScreen(Screen):
                     await self.manager.get_image(s_poster)
             count += 1
 
-        # 5. Show UI
         self.query_one("#loading").display = False
         sidebar.show_series_data(self.meta, self.series_runtime)
         if self.main_poster_url:
@@ -138,28 +156,22 @@ class SeriesDetailScreen(Screen):
         if season_num in self.loaded_seasons:
             return
 
-        # Check for AniList rating
         anilist_rating = None
         if season_num in self.season_meta_cache:
             anilist_rating = self.season_meta_cache[season_num].get('rating')
 
-        # Try OMDb
         ratings_map = await self.manager.fetch_season_ratings(self.imdb_id, season_num)
         
         eps = self.seasons_map.get(season_num, [])
         for ep in eps:
             ep_num = int(ep.get('episode', -1))
-            
-            # Priority 1: OMDb Individual Rating
             if ep_num in ratings_map:
                 ep['rating'] = ratings_map[ep_num]
-            # Priority 2: AniList Season Rating
             elif anilist_rating:
                 ep['rating'] = anilist_rating
         
         self.loaded_seasons.add(season_num)
         
-        # Refresh UI
         if not self.viewing_seasons and self.current_season == season_num:
              list_view = self.query_one("#selection_list")
              if list_view.highlighted_child:
@@ -176,7 +188,6 @@ class SeriesDetailScreen(Screen):
             if url:
                 await self.manager.get_image(url)
 
-    # --- LIST UI HANDLERS ---
     def show_season_list(self):
         self.viewing_seasons = True
         self.current_season = None
@@ -195,6 +206,8 @@ class SeriesDetailScreen(Screen):
             item.season_number = s 
             item.ep_data = None 
             list_view.append(item)
+        
+        list_view.index = 0
         list_view.focus()
 
     def show_episodes(self, season_num):
@@ -222,6 +235,8 @@ class SeriesDetailScreen(Screen):
             item = ListItem(Label(display_text))
             item.ep_data = ep 
             list_view.append(item)
+        
+        list_view.index = 0
         list_view.focus()
 
     def on_list_view_highlighted(self, message: ListView.Highlighted):
@@ -230,7 +245,6 @@ class SeriesDetailScreen(Screen):
         
         sidebar = self.query_one(SeriesSidebar)
 
-        # MODE 1: EPISODE SELECT
         if hasattr(item, 'ep_data') and item.ep_data:
             ep = item.ep_data
             sidebar.show_episode_data(ep, self.series_runtime)
@@ -245,7 +259,6 @@ class SeriesDetailScreen(Screen):
 
             self.load_image_to_sidebar(image_to_show)
 
-        # MODE 2: SEASON LIST
         elif self.viewing_seasons:
             raw_num = getattr(item, 'season_number', None)
             if raw_num is not None:
@@ -284,10 +297,3 @@ class SeriesDetailScreen(Screen):
                         episode=ep['episode']
                     )
                 )
-
-    def on_key(self, event):
-        if event.key == "escape":
-            if not self.viewing_seasons and not self.is_single_season:
-                self.show_season_list()
-            else:
-                self.app.pop_screen()
