@@ -6,7 +6,9 @@ from textual import work
 from rich.text import Text
 import re
 import subprocess
-import tempfile 
+import tempfile
+import os
+from pathlib import Path
 
 # Import helpers from core
 from core.utils import format_size
@@ -203,8 +205,21 @@ class StreamSelectScreen(Screen):
         with self.app.suspend():
             subprocess.run(["clear"]) 
             
-            # --- AUTO-DELETING DISK CACHE ---
-            with tempfile.TemporaryDirectory(prefix="stremio_") as tmp_dir:
+            # --- FIX STARTS HERE ---
+            # 1. Define a persistent cache folder in your HOME directory (Physical Disk)
+            cache_root = Path.home() / ".cache" / "stremio-tui"
+            cache_root.mkdir(parents=True, exist_ok=True)
+
+            # 2. Create a modified environment for the subprocess
+            # This forces WebTorrent (and underlying Node process) to use the physical disk for temp files
+            my_env = os.environ.copy()
+            my_env["TMPDIR"] = str(cache_root)
+            my_env["TEMP"] = str(cache_root)
+            my_env["TMP"] = str(cache_root)
+
+            # 3. Create the temporary directory INSIDE the cache root
+            # dir=cache_root ensures it's created on the physical disk, not /tmp
+            with tempfile.TemporaryDirectory(prefix="stremio_", dir=cache_root) as tmp_dir:
                 print(f"Caching stream to: {tmp_dir}")
                 print("Folder will be deleted when player closes.")
                 
@@ -214,4 +229,7 @@ class StreamSelectScreen(Screen):
                     "--mpv", 
                     "--player-args=--save-position-on-quit" 
                 ]
-                subprocess.run(cmd)
+                
+                # 4. Run with the custom environment
+                subprocess.run(cmd, env=my_env)
+            # --- FIX ENDS HERE ---
