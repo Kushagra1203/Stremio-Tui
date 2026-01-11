@@ -16,7 +16,7 @@ Screen {
     layout: horizontal;
 }
 
-/* --- SIDEBAR --- */
+/* --- SIDEBAR (NAV) --- */
 #sidebar {
     width: 25;
     dock: left;
@@ -46,7 +46,6 @@ SidebarItem:hover {
     background: transparent;
 }
 
-/* FIX: Changed from .--highlight to .-highlight */
 SidebarItem.-highlight {
     color: $accent;
     text-style: bold;
@@ -58,8 +57,26 @@ SidebarItem.-highlight {
 #main_container {
     width: 1fr;
     height: 100%;
-    padding: 0 1;
     background: transparent;
+}
+
+#results_area {
+    width: 100%;
+    height: 1fr;
+}
+
+/* LOADING STATE */
+#main_loading {
+    align: center middle;
+    height: 100%;
+    width: 100%;
+    color: $accent;
+}
+
+#content_view {
+    /* Holds the List and the Preview Sidebar */
+    height: 100%;
+    width: 100%;
 }
 
 Input {
@@ -77,7 +94,9 @@ Input:focus {
 }
 
 /* --- RESULTS LIST --- */
-ListView {
+#results_list {
+    width: 1fr; 
+    height: 100%;
     border: none;
     background: transparent;
 }
@@ -90,58 +109,69 @@ ResultItem {
     background: transparent;
 }
 
-/* FIX: Target Label explicitly on hover */
-ResultItem:hover Label {
-    color: #ffffff;
+ResultItem .result_type {
+    dock: right;
+    color: $dim-text;
+    padding-right: 1;
 }
 
-/* FIX: Handle Keyboard Selection */
-/* 1. Add the correct class (.-highlight) */
 ResultItem.-highlight {
     text-style: bold;
     background: transparent;
 }
 
-/* 2. Force the inner Label to change color */
 ResultItem.-highlight Label {
     color: $accent;
 }
 
-/* --- DETAILS & PLAYER --- */
+/* --- PREVIEW SIDEBAR --- */
 SeriesSidebar {
-    width: 30%;
-    border-right: solid $border;
+    width: 35%;
+    min-width: 40;
+    height: 100%; 
+    border-left: solid $border;
+    padding: 1 2; 
     background: transparent;
+    overflow-y: auto; 
+    scrollbar-size: 0 0; 
 }
 
-/* Updated Stream Screen to be Full Page (Not a popup) */
-StreamSelectScreen {
-    align: left top;       /* Reset alignment */
-    width: 100%;
-    height: 100%;
-    background: transparent;
+#poster_container { 
+    height: auto;
+    align: center middle; 
+    margin-bottom: 1;
 }
 
-/* Remove the box borders */
-StreamSelectScreen #stream_list {
-    width: 100%;
-    height: 1fr;           /* Take remaining height */
-    border: none;          /* Clean look */
-    background: transparent;
+#poster_image { 
+    width: 30; 
+    height: auto; 
 }
 
-/* Ensure the title inside the stream screen looks right */
-StreamSelectScreen #screen_title {
-    dock: top;
-    padding: 1 2;
-    color: $accent;
-    text-style: bold;
-    border-bottom: solid $border;
-    background: transparent;
+#info_title { 
+    text-align: center; 
+    color: #fff; 
+    text-style: bold; 
+    background: #d7005f; 
+    padding: 1; 
+    width: 100%; 
+    margin-bottom: 1; 
 }
 
-Label {
-    background: transparent;
+#meta_table { 
+    height: auto; 
+    margin-bottom: 1; 
 }
 
-.hidden { display: none; }
+#ep_desc { 
+    color: #888; 
+    height: auto; 
+    min-height: 5;
+    border-top: solid #333; 
+    padding-top: 1; 
+    margin-top: 1; 
+}
+
+/* Generic Utility */
+.hidden {
+    display: none;
+}
