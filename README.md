@@ -88,18 +88,7 @@ pip install -r requirements-dev.txt
 ```
 3. Run the app using the module:
 ```bash
-python -m stremio_tui
-```
-
-Testing
-```bash
-pytest
-```
-
-Linting and formatting
-```bash
-ruff check .
-black .
+python -m main.py
 ```
 
 ## Roadmap / Ideas
