@@ -1,4 +1,4 @@
-# Stremio-Tui (v2)
+# Stremio-Tui 
 
 A lightweight, keyboard-first terminal user interface (TUI) for browsing and interacting with Stremio content. Stremio-Tui aims to provide a fast, distraction-free way to search, browse, and play content from your Stremio account directly from the terminal.
 
