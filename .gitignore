@@ -6,3 +6,4 @@ __pycache__/
 stremio
 main.py.bak
 history.json
+debug_error.log

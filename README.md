@@ -34,7 +34,11 @@ cd Stremio-Tui
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install -e .
+```
+
+Run:
+```bash
+python3 main.py
 ```
 
 ## Usage
