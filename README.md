@@ -123,6 +123,19 @@ top 20 results are resolved in parallel with a single `asyncio.gather` before th
 renders. Posters are queued afterwards — they are the slowest part and the UI reads
 fine without them for a few hundred milliseconds.
 
+**Why the magnet carries trackers.** Torrentio returns a bare `infoHash` — no
+`url`, no tracker list. A magnet built from just that hash has nothing to announce
+to, so a standalone client sits at "0 peers" indefinitely; Stremio gets away with
+it because its own torrent engine injects trackers internally. `config.py` holds a
+public tracker list that gets appended as `tr` parameters, and any trackers an
+addon does supply are kept alongside it. The `xt` value is deliberately *not*
+percent-encoded: webtorrent 3.x rejects `xt=urn%3Abtih%3A...` outright with
+"Invalid torrent identifier".
+
+**Which file gets played.** Torrentio sends `fileIdx`, the index of the wanted
+episode inside a multi-file season pack. It is passed through as webtorrent's
+`--select`, so picking one episode of a pack does not pull the whole pack.
+
 **Blocking work in a TUI.** Network calls are awaited inside Textual `@work` workers so
 the event loop keeps rendering. Nothing in the UI thread blocks on I/O.
 

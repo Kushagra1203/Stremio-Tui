@@ -29,3 +29,23 @@ PROVIDERS = [
         "url": "https://comet.elfhosted.com/manifest.json" 
     }
 ]
+
+# --- TORRENT TRACKERS ---
+# Stremio addons such as Torrentio return a bare infoHash with no tracker
+# list, so a magnet built straight from that hash has nothing to announce to
+# and sits at "0 peers" forever. Stremio itself gets away with it because its
+# torrent engine injects a tracker list internally; a standalone client has to
+# supply its own. These are public BitTorrent trackers, passed as `tr`
+# parameters on the magnet URI.
+TRACKERS = [
+    "udp://tracker.opentrackr.org:1337/announce",
+    "udp://open.stealth.si:80/announce",
+    "udp://exodus.desync.com:6969/announce",
+    "udp://tracker.torrent.eu.org:451/announce",
+    "udp://open.demonii.com:1337/announce",
+    "udp://tracker.openbittorrent.com:6969/announce",
+    "udp://explodie.org:6969/announce",
+    "udp://tracker.dler.org:6969/announce",
+    "udp://tracker1.bt.moack.co.kr:80/announce",
+    "wss://tracker.openwebtorrent.com",
+]

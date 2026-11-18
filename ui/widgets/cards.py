@@ -5,13 +5,15 @@ from rich.text import Text
 
 class ResultItem(ListItem):
     """Search/History Result Item"""
-    def __init__(self, title, year, type_, imdb_id, stream_link=None):
+    def __init__(self, title, year, type_, imdb_id, stream_link=None, file_idx=None):
         super().__init__()
         self.title_text = title
         self.year = year
         self.type_ = type_ 
         self.imdb_id = imdb_id
         self.stream_link = stream_link
+        # Which file inside a multi-file torrent to play (season packs).
+        self.file_idx = file_idx
 
     def compose(self) -> ComposeResult:
         # Determine Icon and clean Type Label

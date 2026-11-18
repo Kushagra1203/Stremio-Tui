@@ -7,14 +7,21 @@ from rich.text import Text
 import re
 
 # Import helpers from core
-from core.player import PlayerUnavailable, check_player_dependencies, play_stream
+from core.player import (
+    PlayerUnavailable,
+    check_player_dependencies,
+    play_stream,
+    resolve_stream_link,
+)
 from core.utils import format_size
 
 class StreamItem(ListItem):
-    def __init__(self, display_renderable, link):
+    def __init__(self, display_renderable, link, file_idx=None):
         super().__init__()
         self.display_renderable = display_renderable
         self.link = link
+        # Index of the wanted file inside a multi-file torrent (season packs).
+        self.file_idx = file_idx
 
     def compose(self) -> ComposeResult:
         yield Label(self.display_renderable)
@@ -175,12 +182,16 @@ class StreamSelectScreen(Screen):
                 final_text.append(" | ", style="dim")
                 final_text.append(stats_display, style="cyan")
 
-            link = s.get('url') or s.get('infoHash')
-            if not link: continue
-            if not link.startswith("magnet") and not link.startswith("http"):
-                link = f"magnet:?xt=urn:btih:{link}"
-            
-            list_view.append(StreamItem(final_text, link))
+            # Addons return either a ready URL or a bare infoHash. A magnet
+            # built from the hash alone has no trackers and never finds peers.
+            try:
+                link = resolve_stream_link(s)
+            except PlayerUnavailable:
+                continue
+            if not link:
+                continue
+
+            list_view.append(StreamItem(final_text, link, s.get("fileIdx")))
 
     def on_list_view_selected(self, message: ListView.Selected):
         item = message.item
@@ -194,7 +205,8 @@ class StreamSelectScreen(Screen):
             "year": "",
             "season": self.season,
             "episode": self.episode,
-            "stream_link": link 
+            "stream_link": link,
+            "file_idx": item.file_idx
         })
         
         # Checked before suspending: the TUI is not visible once the player
@@ -207,4 +219,4 @@ class StreamSelectScreen(Screen):
 
         self.notify("Launching player...")
         with self.app.suspend():
-            play_stream(link)
+            play_stream(link, select=item.file_idx)

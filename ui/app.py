@@ -235,7 +235,7 @@ class StremioApp(App):
 
         self.notify(f"Resuming {item.title_text}...")
         with self.suspend():
-            play_stream(item.stream_link)
+            play_stream(item.stream_link, select=getattr(item, "file_idx", None))
 
     def switch_to_search(self):
         self.current_view = "search"
@@ -255,7 +255,7 @@ class StremioApp(App):
             info_str = item.get('last_watched', '')
             if item.get('season') and item.get('episode'):
                 info_str = f"S{item['season']:02d}E{item['episode']:02d} | {info_str}"
-            list_view.append(ResultItem(base_title, info_str, item.get('type', 'series'), item['imdb_id'], item.get('stream_link')))
+            list_view.append(ResultItem(base_title, info_str, item.get('type', 'series'), item['imdb_id'], item.get('stream_link'), item.get('file_idx')))
         list_view.focus()
         list_view.index = 0
 
