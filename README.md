@@ -32,6 +32,13 @@ answer "what do I watch next" without opening a browser.
   webtorrent` does not provide this binary and `requirements.txt` cannot.
 - Optional: `OMDB_API_KEY` environment variable for season ratings
 
+> If `npm install -g webtorrent-cli` fails with `only-allow: command not found`,
+> run `npm i -g only-allow` first and retry. A transitive dependency (`ip-set`)
+> invokes it from a `prepare` script, and npm's fallback `npx` lookup does not
+> always resolve on this setup. Do not work around it with `--ignore-scripts`:
+> that also skips `node-datachannel`'s native prebuild, and the CLI then dies on
+> a missing `.node` module.
+
 Python dependencies are pinned in `requirements.txt`:
 
 | Package | Why |
