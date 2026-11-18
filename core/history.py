@@ -15,7 +15,7 @@ class HistoryManager:
         try:
             with open(HISTORY_FILE, 'r') as f:
                 return json.load(f)
-        except:
+        except Exception:
             return {}
 
     def save_history(self):

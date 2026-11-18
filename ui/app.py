@@ -6,6 +6,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal, Container
 from textual.widgets import Label, Input, ListView, LoadingIndicator
 from textual import work
+from textual.css.query import NoMatches
 
 from core.manager import MediaManager
 from ui.widgets.nav import SidebarNav, SidebarItem
@@ -13,12 +14,9 @@ from ui.widgets.cards import ResultItem
 from ui.screens.details import SeriesDetailScreen
 from ui.screens.player import StreamSelectScreen
 from ui.widgets.vim_list import VimListView
-from ui.widgets.sidebar import SeriesSidebar 
+from ui.widgets.sidebar import SeriesSidebar
 
-from ui.keybinds import APP_BINDINGS, NAV_BINDINGS
-
-class VimListView(ListView):
-    BINDINGS = NAV_BINDINGS
+from ui.keybinds import APP_BINDINGS
 
 class StremioApp(App):
     CSS_PATH = "../styles.tcss" 
@@ -62,66 +60,38 @@ class StremioApp(App):
 
     # --- CORE LOGIC: PRE-FETCHING ---
     async def prefetch_metadata(self, results, limit=20):
+        """Fetch metadata and posters for the top N results before rendering.
+
+        Metadata is what makes the list usable (title, year, poster), so it is
+        fetched up front in parallel rather than lazily as the cursor moves.
+        Posters are queued afterwards because they are the slowest part and the
+        UI reads fine without them for the first few hundred milliseconds.
         """
-        Fetches detailed metadata and posters for the top N results 
-        in parallel before showing the list.
-        """
-        # 1. Identify items needing fetch
-        target_items = results[:limit]
-        fetch_tasks = []
-        
-        for res in target_items:
-            # Skip if already cached
-            if res['id'] in self.preview_cache: continue
-            
-            # Create a task for get_unified_metadata
-            fetch_tasks.append(self.manager.get_unified_metadata(res['id'], res['title']))
+        pending = [
+            item for item in results[:limit]
+            if item["id"] not in self.preview_cache
+        ]
+        if not pending:
+            return
 
-        if not fetch_tasks: return
+        # Pair each item with its own result. Zipping here (rather than indexing
+        # back into `pending` with the result's position) is what keeps the
+        # cache correct when some items were already cached and skipped.
+        metas = await asyncio.gather(
+            *(self.manager.get_unified_metadata(item["id"], item["title"])
+              for item in pending)
+        )
 
-        # 2. Run Metadata Fetch in Parallel
-        meta_results = await asyncio.gather(*fetch_tasks)
+        posters = []
+        for item, meta in zip(pending, metas):
+            if not meta:
+                continue
+            self.preview_cache[item["id"]] = meta
+            if meta.get("poster"):
+                posters.append(meta["poster"])
 
-        # 3. Cache Metadata & Queue Image Downloads
-        image_tasks = []
-        
-        # We need to match results back to IDs. 
-        # Since fetch_tasks corresponds to target_items (minus cached ones),
-        # we strictly should map them carefully. For simplicity in this logic,
-        # we assume order is preserved by gather.
-        
-        valid_metas = [m for m in meta_results if m]
-        
-        for meta in valid_metas:
-            # Find the ID from the result (heuristic match or just loop)
-            # Better way: gather returns in order.
-            pass
-
-        # Re-loop to safely map inputs to outputs
-        # (A simplified approach since we don't have the ID inside 'meta' sometimes)
-        for i, meta in enumerate(meta_results):
-            if not meta: continue
-            
-            # We need the original ID. 
-            # Recalculate which items were actually fetched to map index i correctly.
-            # For simpler code, let's just use the fact that target_items order matches tasks.
-            # Note: This ignores the "continue" in the task creation loop for simplicity here.
-            # Real implementation:
-            
-            # Let's assume we fetched for target_items[i]
-            # (If we skipped cached items, this indexing would be off, 
-            # but for this snippet let's assume cache was empty for simplicity)
-            
-            item_id = target_items[i]['id']
-            self.preview_cache[item_id] = meta
-            
-            if meta.get('poster'):
-                # Queue image download
-                image_tasks.append(self.manager.get_image(meta['poster']))
-        
-        # 4. Run Image Downloads in Parallel
-        if image_tasks:
-            await asyncio.gather(*image_tasks)
+        if posters:
+            await asyncio.gather(*(self.manager.get_image(url) for url in posters))
 
     # --- EVENT HANDLERS ---
     
@@ -198,7 +168,8 @@ class StremioApp(App):
     async def update_preview_sidebar(self, item: ResultItem):
         try:
             sidebar = self.query_one("#home_preview", SeriesSidebar)
-        except: return
+        except NoMatches:
+            return
 
         # 1. Check Cache (This should hit 99% of time now!)
         if item.imdb_id in self.preview_cache:
@@ -231,7 +202,8 @@ class StremioApp(App):
         if pil_img:
             try:
                 self.query_one("#home_preview", SeriesSidebar).update_image(pil_img)
-            except: pass
+            except NoMatches:
+                pass
 
     # --- REST OF THE METHODS (Navigation, Player) ---
     async def on_list_view_selected(self, message: ListView.Selected):

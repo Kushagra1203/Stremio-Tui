@@ -115,7 +115,7 @@ class SeriesSidebar(Vertical):
         if pil_image:
             try:
                 self.query_one("#poster_image", Image).image = pil_image
-            except: 
+            except Exception: 
                 pass
 
     def show_series_data(self, meta, runtime_str):

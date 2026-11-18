@@ -54,7 +54,7 @@ class FzfSelector:
         commands = [
             self.executable,
             "--prompt", f"{prompt} > ",
-            "--delimiter", "\|\|\|", 
+            "--delimiter", r"\|\|\|",
             "--with-nth", "2",
             "--nth", "2", 
             "--ansi",
@@ -85,7 +85,7 @@ class FzfSelector:
             index_str = output.split("|||")[0]
             index = int(index_str)
             return items[index] # Return the original object
-        except:
+        except Exception:
             return None
 
     def ask(self, title):

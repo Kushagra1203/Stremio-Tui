@@ -18,9 +18,9 @@ class OMDbMixin:
                         rating = ep['imdbRating']
                         if rating != "N/A":
                             ratings[e_num] = rating
-                    except:
+                    except Exception:
                         pass
                 return ratings
-        except:
+        except Exception:
             pass
         return {}

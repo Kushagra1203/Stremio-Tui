@@ -45,7 +45,7 @@ class Fzf:
         cmd = [
             self.executable,
             "--prompt", f"{prompt} > ",
-            "--delimiter", "\|\|\|",
+            "--delimiter", r"\|\|\|",
             "--with-nth", "2..",     # Hide the ID from the list
             "--preview", preview_cmd,
             "--preview-window", "left:30%:rounded:wrap", # <--- THE SIDEBAR LAYOUT
@@ -74,7 +74,7 @@ class Fzf:
             selected_line = result.stdout.strip()
             selected_id = selected_line.split("|||")[0]
             return data_map.get(selected_id)
-        except:
+        except Exception:
             return None
 
     def ask(self, question):

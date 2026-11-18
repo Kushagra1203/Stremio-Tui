@@ -15,7 +15,7 @@ class TVMazeMixin:
             
             show_data = resp.json()
             return await self._normalize_tvmaze(show_data)
-        except:
+        except Exception:
             return None
 
     async def get_all_seasons_details_tvmaze(self, imdb_id):
@@ -39,9 +39,9 @@ class TVMazeMixin:
                             "overview": s.get('summary', '').replace('<p>', '').replace('</p>', '').replace('<b>', '').replace('</b>', ''),
                             "rating": None 
                         }
-                    except: pass
+                    except Exception: pass
             return results
-        except:
+        except Exception:
             return {}
 
     async def search_tvmaze_by_name(self, name: str):
@@ -54,7 +54,7 @@ class TVMazeMixin:
             results = resp.json()
             if not results: return None
             return await self._normalize_tvmaze(results[0]['show'])
-        except:
+        except Exception:
             return None
 
     async def _fetch_tvmaze_episodes(self, tvmaze_id):
@@ -63,7 +63,7 @@ class TVMazeMixin:
             resp = await self.client.get(url)
             if resp.status_code == 200:
                 return resp.json()
-        except:
+        except Exception:
             pass
         return []
 
@@ -75,7 +75,7 @@ class TVMazeMixin:
             country = show_data.get('network', {}).get('country', {}).get('name')
             if not country:
                 country = show_data.get('webChannel', {}).get('country', {}).get('name')
-        except:
+        except Exception:
             pass
 
         meta = {

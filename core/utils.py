@@ -9,7 +9,7 @@ def format_size(size_bytes):
             if size < 1024:
                 return f"{size:.2f}{unit}"
             size /= 1024
-    except:
+    except Exception:
         return ""
     return ""
 
@@ -20,7 +20,7 @@ def format_date(date_str):
             date_str = str(date_str).split('T')[0]
         dt = datetime.strptime(date_str, "%Y-%m-%d")
         return dt.strftime("%d %b %Y")
-    except:
+    except Exception:
         return date_str
 
 def fmt_runtime(val):
@@ -31,7 +31,7 @@ def fmt_runtime(val):
             mins = int(val)
             if mins > 60: return f"{mins // 60}h {mins % 60}m"
             return f"{mins}m"
-    except: pass
+    except Exception: pass
     return str(val)
 
 def fmt_rating(val):
@@ -40,5 +40,5 @@ def fmt_rating(val):
         f_val = float(val)
         if f_val == 0: return "N/A"
         return f"⭐ {f_val:.1f}"
-    except:
+    except Exception:
         return "N/A"

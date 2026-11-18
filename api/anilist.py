@@ -44,6 +44,6 @@ class AniListMixin:
                             "overview": desc,
                             "rating": score 
                         }
-            except:
+            except Exception:
                 pass
         return None

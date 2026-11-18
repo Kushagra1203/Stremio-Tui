@@ -15,7 +15,7 @@ def render_sidebar(data_file, item_id):
         with open(data_file, 'r') as f:
             data_map = json.load(f)
         item = data_map.get(str(item_id))
-    except:
+    except Exception:
         item = None
 
     if not item:

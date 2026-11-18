@@ -45,6 +45,6 @@ class TMDBMixin:
                         "id": vid.get('id')
                     })
                 return meta
-        except:
+        except Exception:
             pass
         return None
