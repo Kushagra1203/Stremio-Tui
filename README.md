@@ -23,7 +23,13 @@ answer "what do I watch next" without opening a browser.
 ## Requirements
 
 - Python 3.10+
-- `webtorrent` CLI and `mpv` on `PATH` (playback only — browsing works without them)
+- Playback only — browsing works without these, and the app tells you which is
+  missing instead of dying on `FileNotFoundError`:
+  - `webtorrent` CLI: `npm install -g webtorrent-cli`
+  - `mpv`: from your package manager, e.g. `sudo dnf install mpv`
+
+  Both are external executables, not Python packages — `pip install
+  webtorrent` does not provide this binary and `requirements.txt` cannot.
 - Optional: `OMDB_API_KEY` environment variable for season ratings
 
 Python dependencies are pinned in `requirements.txt`:
@@ -76,6 +82,7 @@ api/                 one mixin per provider, composed into StremioClient
 core/
   manager.py         orchestration + the metadata merge
   cache.py           bounded LRU poster cache
+  player.py          the single webtorrent/mpv invocation + PATH preflight
   history.py         JSON-backed "continue watching"
   utils.py           formatting helpers
 ui/                  Textual app, screens, widgets, keybindings
@@ -119,8 +126,10 @@ python3 -m unittest discover -s tests -t .
 ```
 
 Covers the metadata merge (structure precedence, field injection, missing sources,
-non-mutation) and the poster cache (LRU eviction, cache hits, failed downloads). The
-Textual layer is not covered — it is exercised by hand.
+non-mutation), the poster cache (LRU eviction, cache hits, failed downloads), and
+the player preflight (missing binary is reported before anything is spawned, and
+the command keeps `--player-args=...` as one argv entry). The Textual layer is not
+covered — it is exercised by hand.
 
 ## Known limitations
 
@@ -128,7 +137,9 @@ Textual layer is not covered — it is exercised by hand.
 - No authentication flows — this browses public catalogue and stream endpoints.
 - Provider priority is fixed (TVMaze → TMDB → TVMaze-by-name). A scoring approach
   across sources would be better than first-match-wins.
-- Playback assumes `webtorrent` and `mpv` are installed and shell-configured.
+- Playback shells out to `webtorrent --mpv`. Dependencies are checked up front,
+  but the real invocation is not covered by a test — there is no headless way to
+  assert a torrent actually plays.
 - `history.json` is written to the working directory rather than a config path.
 
 ## Disclaimer

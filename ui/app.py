@@ -1,6 +1,4 @@
 # ui/app.py
-import subprocess
-import tempfile
 import asyncio
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal, Container
@@ -9,6 +7,7 @@ from textual import work
 from textual.css.query import NoMatches
 
 from core.manager import MediaManager
+from core.player import PlayerUnavailable, check_player_dependencies, play_stream
 from ui.widgets.nav import SidebarNav, SidebarItem
 from ui.widgets.cards import ResultItem
 from ui.screens.details import SeriesDetailScreen
@@ -226,12 +225,17 @@ class StremioApp(App):
                     self.push_screen(StreamSelectScreen(item.imdb_id, item.type_, item.title_text))
 
     def play_video(self, item):
+        # Checked before suspending: once the app hands the terminal to the
+        # player, a TUI notification is no longer visible.
+        try:
+            check_player_dependencies()
+        except PlayerUnavailable as exc:
+            self.notify(str(exc), severity="error", timeout=12)
+            return
+
         self.notify(f"Resuming {item.title_text}...")
         with self.suspend():
-            subprocess.run(["clear"])
-            with tempfile.TemporaryDirectory(prefix="stremio_") as tmp_dir:
-                cmd = ["webtorrent", item.stream_link, "--out", tmp_dir, "--mpv", "--player-args=--save-position-on-quit"]
-                subprocess.run(cmd)
+            play_stream(item.stream_link)
 
     def switch_to_search(self):
         self.current_view = "search"
